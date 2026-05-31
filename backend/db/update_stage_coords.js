@@ -4,10 +4,10 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') })
 
 // Gecorrigeerde coördinaten — SVG content-hoogte is 1203.5 (niet 1353.19)
 const coords = [
-  { name: 'Ponton',    lat: 52.071944, lng: 5.083665 },
+  { name: 'Ponton',    lat: 52.072567, lng: 5.083665 },
   { name: 'The Lake',  lat: 52.073557, lng: 5.087742 },
-  { name: 'The Club',  lat: 52.074154, lng: 5.089658 },
-  { name: 'Hangar',   lat: 52.076206, lng: 5.092275 },
+  { name: 'The Club',  lat: 52.073635, lng: 5.089658 },
+  { name: 'Hangar',   lat: 52.074623, lng: 5.092275 },
 ]
 
 async function run() {

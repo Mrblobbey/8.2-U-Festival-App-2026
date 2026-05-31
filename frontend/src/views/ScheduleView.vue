@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 
@@ -11,6 +11,8 @@ const stages = ref([])
 const selectedAct = ref(null)
 const loading = ref(true)
 const activeDay = ref(0)
+const showFavoritesOnly = ref(false)
+const scheduleScrollRef = ref(null)
 
 const HOUR_WIDTH = 100
 const ROW_HEIGHT = 80
@@ -31,14 +33,32 @@ async function fetchData() {
   schedule.value = await schedRes.json()
   stages.value = await stageRes.json()
   loading.value = false
+  nextTick(scrollToNow)
 }
 onMounted(fetchData)
+watch(activeDay, () => nextTick(scrollToNow))
 
 const activeDate = computed(() => DAYS[activeDay.value].date)
 
 const filteredSchedule = computed(() =>
   schedule.value.filter(s => s.start_time.startsWith(activeDate.value))
 )
+
+const nowPosition = computed(() => {
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  if (todayStr !== activeDate.value) return null
+  const mins = (now.getHours() - START_HOUR) * 60 + now.getMinutes()
+  if (mins < 0 || mins > TOTAL_HOURS * 60) return null
+  return (mins / 60) * HOUR_WIDTH
+})
+
+function scrollToNow() {
+  if (!scheduleScrollRef.value || nowPosition.value === null) return
+  const vw = scheduleScrollRef.value.clientWidth
+  const target = 46 + nowPosition.value - vw / 2
+  scheduleScrollRef.value.scrollLeft = Math.max(0, target)
+}
 
 function minutesSinceStart(dateStr) {
   const d = new Date(dateStr)
@@ -66,7 +86,9 @@ const hours = computed(() => {
 })
 
 function scheduleForStage(stageId) {
-  return filteredSchedule.value.filter(s => s.stage_id === stageId)
+  let acts = filteredSchedule.value.filter(s => s.stage_id === stageId)
+  if (showFavoritesOnly.value) acts = acts.filter(s => store.isFavorite(s.id))
+  return acts
 }
 
 function openAct(item) { selectedAct.value = item }
@@ -89,12 +111,37 @@ function closeModal() { selectedAct.value = null }
       </button>
     </div>
 
+    <!-- Toolbar: favorieten-filter + scroll-naar-nu -->
+    <div class="schedule-toolbar">
+      <button
+        class="toolbar-btn"
+        :class="{ 'toolbar-btn--active': showFavoritesOnly }"
+        @click="showFavoritesOnly = !showFavoritesOnly"
+      >
+        <svg viewBox="0 0 24 24" width="13" height="13">
+          <path v-if="showFavoritesOnly" fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          <path v-else fill="none" stroke="currentColor" stroke-width="2" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>
+        {{ showFavoritesOnly ? t('schedule.favoritesActive') : t('schedule.favoritesFilter') }}
+      </button>
+      <button
+        v-if="nowPosition !== null"
+        class="toolbar-btn toolbar-btn--now"
+        @click="scrollToNow"
+      >
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
+        </svg>
+        {{ t('schedule.scrollToNow') }}
+      </button>
+    </div>
+
     <div v-if="loading" class="loading">
       <span class="material-symbols-outlined spin">progress_activity</span>
     </div>
 
     <div v-else class="schedule-wrapper">
-      <div class="schedule-scroll">
+      <div ref="scheduleScrollRef" class="schedule-scroll">
         <!-- Tijdbalk -->
         <div class="time-header">
           <div class="stage-label-spacer"></div>
@@ -105,28 +152,39 @@ function closeModal() { selectedAct.value = null }
           </div>
         </div>
 
-        <!-- Stage-rijen met verticaal gelabeld -->
-        <div class="stage-rows">
-          <div v-for="stage in stages" :key="stage.id" class="stage-row">
-            <div class="stage-label">
-              <span class="stage-label__text">{{ stage.name }}</span>
+        <!-- Stage-rijen met rode huidige-tijdlijn -->
+        <div class="stage-rows-container">
+          <div
+            v-if="nowPosition !== null"
+            class="now-line"
+            :style="{ left: (46 + nowPosition) + 'px' }"
+          ></div>
+          <div class="stage-rows">
+            <div v-for="stage in stages" :key="stage.id" class="stage-row">
+              <div class="stage-label">
+                <span class="stage-label__text">{{ stage.name }}</span>
+              </div>
+              <div class="stage-track" :style="{ width: TOTAL_HOURS * HOUR_WIDTH + 'px', height: ROW_HEIGHT + 'px' }">
+                <button
+                  v-for="item in scheduleForStage(stage.id)"
+                  :key="item.id"
+                  class="block"
+                  :class="{ 'block--favorite': store.isFavorite(item.id) }"
+                  :style="blockStyle(item)"
+                  @click="openAct(item)"
+                >
+                  <span class="block__name">{{ item.act_name }}</span>
+                  <svg class="block__heart" viewBox="0 0 24 24" width="12" height="12">
+                    <path v-if="store.isFavorite(item.id)" fill="white" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    <path v-else fill="none" stroke="white" stroke-width="2" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
-            <div class="stage-track" :style="{ width: TOTAL_HOURS * HOUR_WIDTH + 'px', height: ROW_HEIGHT + 'px' }">
-              <button
-                v-for="item in scheduleForStage(stage.id)"
-                :key="item.id"
-                class="block"
-                :class="{ 'block--favorite': store.isFavorite(item.id) }"
-                :style="blockStyle(item)"
-                @click="openAct(item)"
-              >
-                <span class="block__name">{{ item.act_name }}</span>
-                <!-- Hart-icoon zoals in het ontwerp -->
-                <svg class="block__heart" viewBox="0 0 24 24" width="12" height="12">
-                  <path v-if="store.isFavorite(item.id)" fill="white" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                  <path v-else fill="none" stroke="white" stroke-width="2" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                </svg>
-              </button>
+
+            <!-- Lege staat: favorieten-filter actief maar geen resultaten -->
+            <div v-if="showFavoritesOnly && stages.every(s => scheduleForStage(s.id).length === 0)" class="no-favorites-msg">
+              {{ t('schedule.noFavorites') }}
             </div>
           </div>
         </div>
@@ -176,6 +234,67 @@ function closeModal() { selectedAct.value = null }
 
 <style scoped>
 .schedule-page { padding-bottom: 4rem; }
+
+/* Toolbar: favorieten + nu-knop */
+.schedule-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  align-items: center;
+}
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 20px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.toolbar-btn--active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+.toolbar-btn--now {
+  border-color: #F03228;
+  color: #F03228;
+}
+
+/* Tijdlijn now-indicator */
+.stage-rows-container { position: relative; }
+.now-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #F03228;
+  z-index: 6;
+  pointer-events: none;
+}
+.now-line::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #F03228;
+}
+
+.no-favorites-msg {
+  padding: 1.5rem 1rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  width: 100%;
+}
 
 .day-tabs {
   display: flex;

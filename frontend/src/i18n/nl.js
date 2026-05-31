@@ -30,7 +30,11 @@ export default {
     favorite: 'Favoriet',
     unfavorite: 'Verwijder favoriet',
     moreInfo: 'Meer info',
-    noSchedule: 'Programma nog niet beschikbaar.'
+    noSchedule: 'Programma nog niet beschikbaar.',
+    favoritesFilter: 'Favorieten',
+    favoritesActive: 'Alle acts',
+    noFavorites: 'Nog geen favorieten. Tik op ♥ bij een act.',
+    scrollToNow: 'Nu'
   },
   map: {
     title: 'Festivalkaart',
@@ -49,7 +53,8 @@ export default {
     ehbo: 'EHBO',
     ehbo_desc: 'Eerste hulp post.',
     lockers: 'Kluisjes',
-    lockers_desc: 'Veilig je spullen opbergen.'
+    lockers_desc: 'Veilig je spullen opbergen.',
+    now: 'Nu'
   },
   theme: {
     dark: 'Donker',

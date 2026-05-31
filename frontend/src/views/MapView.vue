@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAppStore } from '@/stores/app'
 import L from 'leaflet'
 
 const { t, locale } = useI18n()
+const store = useAppStore()
 
 const mapContainer = ref(null)
 let map = null
@@ -89,6 +91,10 @@ async function fetchData() {
 function isNowPlaying(act) {
   const now = new Date()
   return new Date(act.start_time) <= now && new Date(act.end_time) >= now
+}
+
+function isActPast(act) {
+  return new Date(act.end_time) < new Date()
 }
 
 function formatTime(d) {
@@ -365,16 +371,37 @@ onUnmounted(() => {
           <template v-if="hasSchedule(activeStage.id)">
             <template v-for="(acts, dayLabel) in getStageSchedule(activeStage.id)" :key="dayLabel">
               <div class="schedule-day-header">{{ dayLabel }}</div>
-              <div
-                v-for="act in acts"
-                :key="act.id"
-                class="schedule-act-row"
-                :class="{ 'schedule-act--now': isNowPlaying(act) }"
-              >
-                <span class="schedule-act-time">{{ formatTime(act.start_time) }}</span>
-                <span class="schedule-act-name">{{ act.act_name }}</span>
-                <span v-if="isNowPlaying(act)" class="schedule-act-live">LIVE</span>
-              </div>
+              <template v-for="(act, idx) in acts" :key="act.id">
+                <!-- Rode NOW-lijn tussen afgelopen en aankomende acts -->
+                <div
+                  v-if="!isActPast(act) && (idx === 0 || isActPast(acts[idx - 1]))"
+                  class="now-divider"
+                >
+                  <span class="now-divider__label">{{ t('map.now') }}</span>
+                  <span class="now-divider__line"></span>
+                </div>
+                <div
+                  class="schedule-act-row"
+                  :class="{
+                    'schedule-act--now': isNowPlaying(act),
+                    'schedule-act--past': isActPast(act)
+                  }"
+                >
+                  <span class="schedule-act-time">{{ formatTime(act.start_time) }}</span>
+                  <span class="schedule-act-name">{{ act.act_name }}</span>
+                  <span v-if="isNowPlaying(act)" class="schedule-act-live">LIVE</span>
+                  <button
+                    class="act-heart-btn"
+                    @click.stop="store.toggleFavorite(act.id)"
+                    :aria-label="store.isFavorite(act.id) ? t('schedule.unfavorite') : t('schedule.favorite')"
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path v-if="store.isFavorite(act.id)" fill="var(--color-accent)" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                      <path v-else fill="none" stroke="var(--color-text-muted)" stroke-width="2" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                  </button>
+                </div>
+              </template>
             </template>
           </template>
           <div v-else class="schedule-empty">{{ t('schedule.noSchedule') }}</div>
@@ -635,6 +662,28 @@ onUnmounted(() => {
 }
 .schedule-day-header:first-child { padding-top: 0.2rem; }
 
+/* NOW-scheidingslijn in stage panel */
+.now-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.35rem 0;
+}
+.now-divider__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #F03228;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.now-divider__line {
+  flex: 1;
+  height: 1.5px;
+  background: #F03228;
+  opacity: 0.6;
+}
+
 .schedule-act-row {
   display: flex;
   align-items: center;
@@ -643,6 +692,19 @@ onUnmounted(() => {
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
 }
 .schedule-act-row:last-child { border-bottom: none; }
+.schedule-act--past .schedule-act-time,
+.schedule-act--past .schedule-act-name { opacity: 0.45; }
+
+/* Hart-knop per act in stage panel */
+.act-heart-btn {
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
 
 .schedule-act--now {
   background: color-mix(in srgb, var(--color-accent) 8%, transparent);

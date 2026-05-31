@@ -30,7 +30,11 @@ export default {
     favorite: 'Add to favorites',
     unfavorite: 'Remove favorite',
     moreInfo: 'More info',
-    noSchedule: 'Schedule not yet available.'
+    noSchedule: 'Schedule not yet available.',
+    favoritesFilter: 'Favorites',
+    favoritesActive: 'All acts',
+    noFavorites: 'No favorites yet. Tap ♥ on an act to save it.',
+    scrollToNow: 'Now'
   },
   map: {
     title: 'Festival Map',
@@ -49,7 +53,8 @@ export default {
     ehbo: 'First Aid',
     ehbo_desc: 'First aid post.',
     lockers: 'Lockers',
-    lockers_desc: 'Secure storage for your belongings.'
+    lockers_desc: 'Secure storage for your belongings.',
+    now: 'Now'
   },
   theme: {
     dark: 'Dark',
