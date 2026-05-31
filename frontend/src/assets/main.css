@@ -1,0 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Sansation:ital,wght@0,300;0,400;0,700;1,300&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+:root {
+  --color-accent: #F03228;
+  --color-secondary: #247BA0;
+  --color-info: #E3B505;
+  --color-bg: #ffffff;
+  --color-surface: #f5f5f5;
+  --color-text: #000000;
+  --color-text-muted: #555555;
+  --color-border: #e0e0e0;
+  --color-nav-bg: #000000;
+  --color-nav-text: #ffffff;
+  --radius: 6px;
+  --transition: 0.25s ease;
+}
+
+:root.dark {
+  --color-bg: #111111;
+  --color-surface: #1e1e1e;
+  --color-text: #ffffff;
+  --color-text-muted: #aaaaaa;
+  --color-border: #333333;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Sansation', sans-serif;
+  font-weight: 400;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  transition: background-color var(--transition), color var(--transition);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+h1, h2, h3 { font-weight: 700; color: var(--color-secondary); }
+h4 { font-weight: 700; }
+
+button {
+  font-family: 'Sansation', sans-serif;
+  cursor: pointer;
+}
+
+a { color: var(--color-accent); text-decoration: none; }
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.page {
+  flex: 1;
+  padding: 1rem;
+  padding-bottom: 5rem;
+  overflow-y: auto;
+  background: var(--color-bg);
+}
+
+.page-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  margin-bottom: 1rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 300;
+  font-style: italic;
+  transition: opacity var(--transition);
+}
+.btn:hover { opacity: 0.85; }
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Page transition */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
